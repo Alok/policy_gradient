@@ -79,10 +79,10 @@ def collect_trajectory(policy: Policy, env=env) -> Trajectory:
             env.render()
         # need to wrap in np.array([]) for `predict` to work
         # `predict` returns 2D array with single 1D array that we need to extract
-        action_probs = policy(tf.convert_to_tensor(state.astype('float32').reshape(1,STATE_SHAPE[0]))).eval()
+        logits = policy(tf.convert_to_tensor(state.astype('float32').reshape(1,STATE_SHAPE[0])))
+        action_probs = logits.eval()
         action = np.random.choice(np.arange(NUM_ACTIONS), p=action_probs[0])
 
-        action = np.random.choice(np.arange(NUM_ACTIONS), p=action_probs)
         state, reward, done, _ = env.step(action)
 
         trajectory.states.append(state)
@@ -114,10 +114,6 @@ def init_policy(input_shape=STATE_SHAPE, depth=3) -> Network:
 
     return Model(inputs=S, outputs=A)
 
-
-opt = keras.optimizers.Adam()
-
-# updates = opt.get_updates([],[],K.)
 
 if __name__ == '__main__':
     policy = keras.models.load_model(
