@@ -3,8 +3,6 @@
 
 import argparse
 import os
-import typing
-from typing import Any, NamedTuple, Tuple
 
 import gym
 import keras
@@ -29,80 +27,15 @@ env = gym.make(args.env)
 
 NUM_ACTIONS = env.action_space.n
 STATE_SHAPE = env.observation_space.shape
-
-################# TYPES #####################
-Real = float
-
-Action = int  # 0 for left, 1 for right
-State = typing.Sequence  # (4,) array
-Probability = float
+STATE_SIZE = env.observation_space.shape[0]
 
 
-class Trajectory(NamedTuple):
-    states: Any = None
-    actions: Any = None
-    rewards: Any = None
-    action_probs: Any = None
-
-
-Network = typing.Callable
-Policy = typing.Callable[[State, Action], Probability]
-
-#############################################
-
-
-def R(rewards, start=0, end=None) -> Real:
+def R(rewards, start=0, end=None) -> float:
     ''' Total discounted future rewards. '''
     return np.sum(rewards[start:end])
 
 
-def collect_trajectory(policy: Policy, env=env) -> Trajectory:
-
-    # to avoid python's list append behavior
-    trajectory = Trajectory()
-    if trajectory.states is None:
-        trajectory = trajectory._replace(states=[])
-    if trajectory.actions is None:
-        trajectory = trajectory._replace(actions=[])
-    if trajectory.action_probs is None:
-        trajectory = trajectory._replace(action_probs=[])
-    if trajectory.rewards is None:
-        trajectory = trajectory._replace(rewards=[])
-
-    done = False
-
-    state = env.reset()
-    trajectory.states.append(state)
-
-    while not done:
-        if args.render:
-            env.render()
-        # need to wrap in np.array([]) for `predict` to work
-        # `predict` returns 2D array with single 1D array that we need to extract
-        logits = policy(tf.convert_to_tensor(state.astype('float32').reshape(1,STATE_SHAPE[0])))
-        action_probs = logits.eval()
-        action = np.random.choice(np.arange(NUM_ACTIONS), p=action_probs[0])
-
-        state, reward, done, _ = env.step(action)
-
-        trajectory.states.append(state)
-        trajectory.actions.append(action)
-        trajectory.action_probs.append(action_probs[action])
-        trajectory.rewards.append(reward)
-
-    # Cast elements of tuple to Numpy arrays.
-    # assign 0 reward to final state
-    trajectory.rewards.append(0.0)
-    trajectory = Trajectory(
-        np.array(trajectory.states),
-        np.array(trajectory.actions),
-        np.array(trajectory.action_probs),
-        np.array(trajectory.rewards), )
-
-    return trajectory
-
-
-def init_policy(input_shape=STATE_SHAPE, depth=3) -> Network:
+def init_policy(input_shape=STATE_SHAPE, depth=3):
     ''' output can be either "reward" or "action"'''
 
     S = Input(shape=STATE_SHAPE)
@@ -115,16 +48,59 @@ def init_policy(input_shape=STATE_SHAPE, depth=3) -> Network:
     return Model(inputs=S, outputs=A)
 
 
+def collect_trajectory(policy, env=env):
+
+    done = False
+    states = []
+    actions = []
+    rewards = []
+    logits = []
+
+    state = env.reset()
+
+    while not done:
+        if args.render:
+            env.render()
+
+        logit = policy.predict(state.reshape(1, STATE_SIZE))[0]
+
+        action = np.random.choice(NUM_ACTIONS, p=logit)
+
+        state, reward, done, _ = env.step(action)
+
+        states.append(state)
+        actions.append(action)
+        rewards.append(reward)
+        logits.append(logit)
+
+    # assign 0 reward to final state
+    rewards.append(0.0)
+
+    # Cast to Numpy arrays.
+    states = np.array(states, dtype=np.float32)
+    actions = np.array(actions, dtype=np.int)
+    rewards = np.array(rewards, dtype=np.float32)
+    logits = np.array(logits, dtype=np.float32)
+
+    return states, actions, rewards, logits
+
+
 if __name__ == '__main__':
+
     policy = keras.models.load_model(
         'policy.h5') if os.path.exists('policy.h5') and not args.new else init_policy()
 
-    x = K.placeholder(name='x', shape=(None, 4))
-    y = K.placeholder(name='y', shape=(None, 2))
-    # loss = K.sum(K.log(policy.predict()), axis=None)
+    opt = keras.optimizers.Adam()
+    sy_states = K.placeholder(name='states', shape=(None, STATE_SIZE))
+    # loss = K.sum(K.log(policy(tf.convert_to_tensor(sy_states.reshape(-1, 4)))))
+    loss = K.sum(K.log(policy(sy_states)))
+    updates = opt.get_updates(params=policy.weights, constraints=None, loss=loss)
+    train = K.function(inputs=[sy_states], outputs=[loss], updates=updates)
 
     for _ in range(args.iterations):
-        states, actions, action_probs, rewards = collect_trajectory(policy, env)
+        states, actions, rewards, logits = collect_trajectory(policy, env)
+
+        loss = train([states])
 
         Rew = np.array([sum(rewards[t:]) for t in range(len(rewards))])
 
