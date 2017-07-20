@@ -13,7 +13,8 @@ import numpy as np
 import tensorflow as tf
 from keras import backend as K
 from keras.callbacks import EarlyStopping
-from keras.layers import Activation, Dense
+from keras.layers import Activation, Dense, Input
+from keras.models import Model
 from pudb import set_trace
 
 parser = argparse.ArgumentParser()
@@ -78,7 +79,9 @@ def collect_trajectory(policy: Policy, env=env) -> Trajectory:
             env.render()
         # need to wrap in np.array([]) for `predict` to work
         # `predict` returns 2D array with single 1D array that we need to extract
-        action_probs = policy.predict(np.array([state]), batch_size=1)[0]
+        action_probs = policy(tf.convert_to_tensor(state.astype('float32').reshape(1,STATE_SHAPE[0]))).eval()
+        action = np.random.choice(np.arange(NUM_ACTIONS), p=action_probs[0])
+
         action = np.random.choice(np.arange(NUM_ACTIONS), p=action_probs)
         state, reward, done, _ = env.step(action)
 
@@ -102,28 +105,27 @@ def collect_trajectory(policy: Policy, env=env) -> Trajectory:
 def init_policy(input_shape=STATE_SHAPE, depth=3) -> Network:
     ''' output can be either "reward" or "action"'''
 
-    model = keras.models.Sequential()
+    S = Input(shape=STATE_SHAPE)
 
-    model.add(Dense(32, activation='relu', input_shape=input_shape))
+    x = Dense(32, activation='relu')(S)
     for _ in range(depth):
-        model.add(Dense(32, activation='relu'))
-    model.add(Dense(NUM_ACTIONS, activation='softmax'))
+        x = Dense(32, activation='relu')(x)
+    A = Dense(NUM_ACTIONS, activation='softmax')(x)
 
-    return model
+    return Model(inputs=S, outputs=A)
 
 
 opt = keras.optimizers.Adam()
 
-updates = opt.get_updates([],[],K.)
-
-
-
-# def grad(model: Network, action_probs):
-#     return K.gradients(loss=K.sum(K.log(action_probs)), variables=model.weights)
+# updates = opt.get_updates([],[],K.)
 
 if __name__ == '__main__':
     policy = keras.models.load_model(
         'policy.h5') if os.path.exists('policy.h5') and not args.new else init_policy()
+
+    x = K.placeholder(name='x', shape=(None, 4))
+    y = K.placeholder(name='y', shape=(None, 2))
+    # loss = K.sum(K.log(policy.predict()), axis=None)
 
     for _ in range(args.iterations):
         states, actions, action_probs, rewards = collect_trajectory(policy, env)
