@@ -17,7 +17,7 @@ from pudb import set_trace
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-e', '--env', type=str, default='CartPole-v1')
-parser.add_argument('-n', '--iterations', type=int, default=10)
+parser.add_argument('-n', '--iterations', type=int, default=1000)
 parser.add_argument('--new', action='store_true')
 parser.add_argument('--render', action='store_true')
 
@@ -62,7 +62,7 @@ def collect_trajectory(policy, env=env):
         if args.render:
             env.render()
 
-        logit = policy.predict(state.reshape(1, STATE_SIZE))[0]
+        logit = policy.predict(state.reshape(1, STATE_SIZE)).ravel()
 
         action = np.random.choice(NUM_ACTIONS, p=logit)
 
@@ -93,16 +93,19 @@ if __name__ == '__main__':
     opt = keras.optimizers.Adam()
     sy_states = K.placeholder(name='states', shape=(None, STATE_SIZE))
     # loss = K.sum(K.log(policy(tf.convert_to_tensor(sy_states.reshape(-1, 4)))))
-    loss = K.sum(K.log(policy(sy_states)))
-    updates = opt.get_updates(params=policy.weights, constraints=None, loss=loss)
-    train = K.function(inputs=[sy_states], outputs=[loss], updates=updates)
 
-    for _ in range(args.iterations):
+    for iter in range(args.iterations):
         states, actions, rewards, logits = collect_trajectory(policy, env)
 
-        loss = train([states])
+        # Rew = np.array([sum(rewards[t:]) for t in range(len(rewards))])
 
-        Rew = np.array([sum(rewards[t:]) for t in range(len(rewards))])
+        loss = sum(rewards) * K.sum(K.log(policy(sy_states)))
+        updates = opt.get_updates(params=policy.weights, constraints=[], loss=loss)
+        train = K.function(inputs=[sy_states], outputs=[loss], updates=updates)
+        loss = train([states])
+        if iter % 25 == 0:
+            print(np.sum(rewards))
+
 
     # save weights
     policy.save('policy.h5')
