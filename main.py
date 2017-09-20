@@ -2,157 +2,141 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+import math
 import os
 import random
 import subprocess
 import sys
-import typing
-from collections import namedtuple
-from pathlib import Path
-from typing import Any, NamedTuple, Tuple
 
 import gym
-import keras
 import matplotlib.pyplot as plt
 import numpy as np
-import tensorflow as tf
-from keras import backend as K
-from keras.callbacks import EarlyStopping
-from keras.layers import Activation, Dense
-from pudb import set_trace
+import torch
+import torch.nn.functional as F
+from torch import Tensor, nn
+from torch.autograd import Variable
+from torch.nn.functional import relu
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-a', '--algorithm', type=str, default='pg')
-parser.add_argument('-e', '--env', type=str, default='CartPole-v0')
-parser.add_argument('-n', '--iterations', type=int, default=10)
+parser.add_argument('-e', '--env', type=str, default='Pendulum-v0')
+parser.add_argument('-n', '--iterations', type=int, default=2)
 parser.add_argument('--new', action='store_true')
+parser.add_argument('--render', '-r', action='store_true')
 
 args = parser.parse_args()
 
+ITERS = args.iterations
 env = gym.make(args.env)
 
-NUM_ACTIONS = env.action_space.n
-STATE_SHAPE = env.observation_space.shape
+STATE_SHAPE = env.observation_space.shape[0]
+ACTION_SHAPE = env.action_space.shape[0]
+# States are Numpy arrays of length 3 with elements in the range [1,1,8]
+STATE_RANGE = env.observation_space.high
+# Actions are Numpy arrays of length 1 with elements in the (negative and positive) range [,2]
+ACTION_RANGE = env.action_space.high
 
 ################# TYPES #####################
-Real = float
-parameter = Any
 timestep = int
 
-Action = int  # 0 for left, 1 for right
-Actions = typing.Sequence[Action]  # 0 for left, 1 for right
-State = typing.Sequence  # (4,) array
-States = typing.Sequence  # (4,) array
 Reward = float
-Rewards = typing.Sequence[Reward]
-
-
-class Trajectory(NamedTuple):
-    states: Any = None
-    actions: Any = None
-    rewards: Any = None
-
-
-Network = typing.Callable
-Policy = typing.Callable[[State], Action]
-Baseline = typing.Callable[[State], Reward]
 
 #############################################
 
 # TODO add gamma as default arg = .95
+DISCOUNT = .99
+
+pi = Variable(torch.FloatTensor([math.pi]))
+
+# TODO policy should return a probability (prob vector over discrete actions or just a prob)
 
 
-def J(w: parameter) -> Real:
-    '''Objective function of parameters'''
-    raise NotImplementedError
+def discount(rewards):
+    # return Tensor([pow(DISCOUNT, i) for i in range(len(rewards))])
+    return np.array([pow(DISCOUNT, i) for i in range(len(rewards))])
 
 
-def init_network(output: str, input_shape=STATE_SHAPE, depth=3) -> Network:
-    ''' output can be either "reward" or "action"'''
-    model = keras.models.Sequential()
-    # input layer
-    model.add(Dense(32, activation='relu', input_shape=input_shape))
-
-    # middle layers
-    for _ in range(depth):
-        model.add(Dense(32, activation='relu'))
-
-    # output layer
-    # TODO does this work for a baseline?
-    if output == 'reward':
-        model.add(Dense(1, activation='linear'))
-    elif output == 'action':
-        model.add(Dense(1, activation='sigmoid'))
-    else:
-        print('Output must be reward or action', file=sys.stderr)
-
-    model.compile(loss=keras.losses.mse, optimizer=keras.optimizers.Adam(), metrics=['accuracy'])
-
-    return model
+def G(rewards, start: timestep = 0, end: timestep = None) -> Reward:
+    '''Total discounted future rewards.'''
+    return sum(np.array(rewards[start:end]) * discount(rewards[start:end]))
 
 
-def initialize_policy(input_shape=STATE_SHAPE, depth=3) -> Policy:
-    return init_network(input_shape=input_shape, depth=depth, output='action')
-
-
-def initialize_baseline(input_shape=STATE_SHAPE, depth=3) -> Baseline:
-    return init_network(input_shape=input_shape, depth=depth, output='reward')
-
-
-def R(rewards, start: timestep=0, end: timestep=None) -> Real:
-    ''' Total discounted future rewards. '''
-    return np.sum(rewards[start:end])
-
-
-# def Adv(rewards: Rewards, t: timestep) -> Real:
-#     return R(rewards, t) - b(rewards, t)
-
-
-def collect_trajectory(pi: Policy, env) -> Trajectory:
+def collect_trajectory(policy, *, render=args.render):
+    '''Run through an episode by following a policy and collect data.'''
 
     # to avoid python's list append behavior
-    trajectory = Trajectory()
-    if trajectory.states is None:
-        trajectory = trajectory._replace(states=[])
-    if trajectory.actions is None:
-        trajectory = trajectory._replace(actions=[])
-    if trajectory.rewards is None:
-        trajectory = trajectory._replace(rewards=[])
+    states = []
+    actions = []
+    rewards = []
 
     done = False
 
-    state = env.reset()
-    trajectory.states.append(state)
+    s = Tensor(env.reset())
+    states.append(s) # if s is a scalar, this will just return random numbers
 
     while not done:
-        # env.render()
-        # need to wrap in np.array([]) for `predict` to work
-        action = 1 if pi.predict(np.array([state])) > random.random() else 0
-        state, reward, done, _ = env.step(action)
-        trajectory.states.append(state)
-        trajectory.actions.append(action)
-        trajectory.rewards.append(reward)
-    # Cast elements of tuple to Numpy arrays.
-    # assign 0 reward to final state
-    trajectory.rewards.append(0.0)
-    trajectory = Trajectory(
-        np.array(trajectory.states),
-        np.array(trajectory.actions),
-        np.array(trajectory.rewards), )
+        if render:
+            env.render()
+        # TODO add action picking
+        s = Variable(s)
+        a = behavior_policy.select_action(s)[0].data.numpy()
+        s, r, done, _ = env.step(a)
+        s = Tensor(s)
+        states.append(s)
+        actions.append(a)
+        rewards.append(r)
 
-    return trajectory
+    # Final state is considered to have reward 0 for transitioning forever.
+    rewards.append(0)
+
+    return states, actions, rewards
+
+
+def gaussian(x, mean, var):
+    a = (-(x - mean).pow(2) / (2 * var)).exp()
+    b = 1 / ((2 * var * pi.expand_as(var)).sqrt())
+    return a * b
+
+
+class Policy(nn.Module):
+    def __init__(self):
+        super().__init__()
+        S = STATE_SHAPE
+        H = 128  # Hidden size
+        A = ACTION_SHAPE
+        self.l1 = nn.Linear(S, H)
+        self.l2 = nn.Linear(H, H)
+
+        self.l3, self.l3_ = nn.Linear(H, A), nn.Linear(H, 1)
+
+    def forward(self, s):
+        s = s.view(1, 3).float()
+        s = self.l1(s)
+        s = self.l2(s)
+
+        mean, var = self.l3(s), self.l3_(s)
+
+        return mean, var
+
+    def select_action(self, s):
+
+        mean, var = self.forward(s)
+
+        action = mean + var.sqrt() * Variable(torch.randn(mean.size()))
+        action = torch.normal(mean, var.sqrt())
+        prob = gaussian(action, mean, var)
+
+        log_prob = prob.log()
+
+        return action, log_prob
 
 
 if __name__ == '__main__':
-    pi = keras.models.load_model('policy.h5') if os.path.exists('policy.h5') else initialize_policy()
-    b = keras.models.load_model('baseline.h5') if os.path.exists('baseline.h5') else initialize_baseline()
 
-    for _ in range(500):
-        states, actions, rewards = collect_trajectory(pi, env)
+    behavior_policy = Policy()
 
-        Rew = np.array([sum(rewards[t:]) for t in range(len(rewards))])
+    for _ in range(args.iterations):
+        states, actions, rewards = collect_trajectory(behavior_policy)
 
-        b.fit(x=states, y=Rew, epochs=2, validation_split=0.1, callbacks=[EarlyStopping()])
-    # save weights
-    b.save('baseline.h5')
-    pi.save('policy.h5')
+        returns = G(rewards)
+
+    # TODO save weights
