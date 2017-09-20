@@ -1,0 +1,31 @@
+[[source]]
+url = "https://pypi.python.org/simple"
+verify_ssl = true
+[requires]
+python_version = "3.6"
+[dev-packages]
+pudb = "*"
+
+
+
+
+
+
+
+
+
+
+
+[packages]
+
+040d199 = {file = "http://download.pytorch.org/whl/torch-0.2.0.post3-cp36-cp36m-macosx_10_7_x86_64.whl"}
+torchvision = "*"
+keras = "*"
+tensorflow = "*"
+numpy = "*"
+matplotlib = "*"
+gym = {extras = ["all"]}
+
+
+
+
