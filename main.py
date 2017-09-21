@@ -124,20 +124,22 @@ if __name__ == '__main__':
         if args.render:
             env.render()
 
-        # rewards and logits
         rewards = []
-        logits = []
+        log_probs = []
 
         done = False
 
         s = env.reset()
 
         while not done:
-            m, v = policy(W(s))
-            a = sample(m, v)
-            l = log_pdf(a, m, v)
+            mean, variance = policy(W(s))
+
+            a = sample(mean, variance)
+            log_prob = log_pdf(a, mean, variance)
+
             s, r, done, _ = env.step(a.numpy()[0])
-            logits.append(l)
+
+            log_probs.append(log_prob)
             rewards.append(r)
 
         # TODO discount
