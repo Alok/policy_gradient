@@ -13,12 +13,12 @@ from pudb import set_trace
 from torch import Tensor as T
 from torch import nn, stack
 from torch.autograd import Variable as V
-from torch.nn.functional import relu, softplus
+from torch.nn.functional import relu, sigmoid, softplus
 from torch.optim import Adam
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-e', '--env', type=str, default='Pendulum-v0')
-parser.add_argument('-n', '--iterations', type=int, default=10000)
+parser.add_argument('-n', '--iterations', type=int, default=2_000)
 parser.add_argument('--new', action='store_true')
 parser.add_argument('--render', '-r', action='store_true')
 
