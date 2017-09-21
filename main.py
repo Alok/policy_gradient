@@ -65,17 +65,23 @@ class Policy(nn.Module):
         return mean, variance
 
 
-    def select_action(self, s):
+def sample(mean: V, variance: V) -> T:
+    '''Sample an action'''
 
-        mean, var = self.forward(s)
+    std = variance.sqrt()
+    # Sample from standard normal distribution to scale into arbitrary Gaussian.
+    gaussian_noise = V(torch.randn(mean.size()))
 
-        action = mean + var.sqrt() * Variable(torch.randn(mean.size()))
-        action = torch.normal(mean, var.sqrt())
-        prob = gaussian(action, mean, var)
+    # `action` SHOULD be a Tensor, not a Variable.
+    action = (mean + std * gaussian_noise).data
 
-        log_prob = prob.log()
+    return torch.clamp(
+        action,
+        min=float(env.action_space.low),
+        max=float(env.action_space.high),
+    )
 
-        return action, log_prob
+
 
 
 if __name__ == '__main__':
