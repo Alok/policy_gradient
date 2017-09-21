@@ -27,15 +27,14 @@ args = parser.parse_args()
 ITERS = args.iterations
 env = gym.make(args.env)
 
-STATE_SHAPE = env.observation_space.shape[0]
-ACTION_SHAPE = env.action_space.shape[0]
-# States are Numpy arrays of length 3 with elements in the range [1,1,8]
-STATE_RANGE = env.observation_space.high
-# Actions are Numpy arrays of length 1 with elements in the (negative and positive) range [,2]
-ACTION_RANGE = env.action_space.high
-DISCOUNT = .99
+STATE_SHAPE = env.observation_space.shape[0] if len(
+    env.observation_space.shape
+) == 1 else env.observation_space.shape
 
 pi = V(T([math.pi]))
+ACTION_SHAPE = env.action_space.shape[0] if len(
+    env.action_space.shape
+) == 1 else env.action_space.shape
 
 
 def W(s: np.ndarray = np.random.rand(3)) -> V:
