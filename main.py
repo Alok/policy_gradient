@@ -82,6 +82,11 @@ def sample(mean: V, variance: V) -> T:
     )
 
 
+def pdf(a: T, mean: V, variance: V) -> V:
+    '''Get probability density of an action'''
+    exp_term = (-(V(a) - mean).pow(2) / (2 * variance)).exp()
+    coeff = 1 / ((2 * variance * pi.expand_as(variance)).sqrt())
+    return coeff * exp_term
 
 
 if __name__ == '__main__':
