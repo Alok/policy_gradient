@@ -105,10 +105,25 @@ if __name__ == '__main__':
     policy = Policy()
     opt = Adam(policy.parameters())
 
-    for _ in range(args.iterations):
-        states, actions, rewards = collect_trajectory(behavior_policy)
+    for i in range(ITERS):
+        if args.render:
+            env.render()
 
-        returns = G(rewards)
+        # rewards and logits
+        rewards = []
+        logits = []
+
+        done = False
+
+        s = env.reset()
+
+        while not done:
+            m, v = policy(W(s))
+            a = sample(m, v)
+            l = log_pdf(a, m, v)
+            s, r, done, _ = env.step(a.numpy()[0])
+            logits.append(l)
+            rewards.append(r)
 
     # TODO save weights
         # TODO discount
