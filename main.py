@@ -61,8 +61,8 @@ class Policy(nn.Module):
         self.mean_head = nn.Linear(H, A)
         self.variance_head = nn.Linear(H, A)
 
-    def forward(self, s: V):
-        s = s.view(1, 3).float()
+    def forward(self, s: V) -> (V, V):
+        '''Output mean and variance of a Gaussian.'''
         s = s.view(1, STATE_SHAPE).float()
         s = self.l1(s)
         s = relu(s)
