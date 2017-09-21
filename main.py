@@ -102,7 +102,8 @@ def log_pdf(a: T, mean: V, variance: V) -> V:
 
 if __name__ == '__main__':
 
-    behavior_policy = Policy()
+    policy = Policy()
+    opt = Adam(policy.parameters())
 
     for _ in range(args.iterations):
         states, actions, rewards = collect_trajectory(behavior_policy)
