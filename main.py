@@ -142,16 +142,5 @@ if __name__ == '__main__':
             log_probs.append(log_prob)
             rewards.append(r)
 
-        # TODO discount
-        Adv = sum(V(T(rewards)))
-        logits = stack(logits)
-        loss = -sum(Adv.expand_as(logits) * logits)
-        N = len(rewards)
-        loss = loss / N
+        loss = bprop(opt, rewards, log_probs)
 
-        opt.zero_grad()
-        loss.backward()
-        torch.nn.utils.clip_grad_norm(policy.parameters(), 40)
-        opt.step()
-        if i % 1000 == 0:
-            print(int(Adv.data.numpy()))
