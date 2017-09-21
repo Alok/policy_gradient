@@ -52,16 +52,21 @@ class Policy(nn.Module):
         self.l1 = nn.Linear(S, H)
         self.l2 = nn.Linear(H, H)
 
-        self.l3, self.l3_ = nn.Linear(H, A), nn.Linear(H, 1)
+        self.mean_head = nn.Linear(H, A)
+        self.variance_head = nn.Linear(H, A)
 
     def forward(self, s: V):
         s = s.view(1, 3).float()
-        s = relu(self.l1(s))
-        s = relu(self.l2(s))
+        s = self.l1(s)
+        s = relu(s)
+        s = self.l2(s)
+        s = relu(s)
 
-        mean = self.l3(s)
+        mean = self.mean_head(s)
+
         # Variance must be > 0, so apply a softplus
-        variance = softplus(self.l3_(s))
+        variance = softplus(self.variance_head(s))
+
         return mean, variance
 
 
