@@ -38,6 +38,9 @@ DISCOUNT = .99
 pi = V(T([math.pi]))
 
 
+def W(s: np.ndarray = np.random.rand(3)) -> V:
+    '''Wrap array into Variable '''
+    return V(torch.from_numpy(s))
 
 
 class Policy(nn.Module):
