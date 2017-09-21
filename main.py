@@ -111,3 +111,9 @@ if __name__ == '__main__':
         returns = G(rewards)
 
     # TODO save weights
+        # TODO discount
+        Adv = sum(V(T(rewards)))
+        logits = stack(logits)
+        loss = -sum(Adv.expand_as(logits) * logits)
+        N = len(rewards)
+        loss = loss / N
