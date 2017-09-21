@@ -125,10 +125,16 @@ if __name__ == '__main__':
             logits.append(l)
             rewards.append(r)
 
-    # TODO save weights
         # TODO discount
         Adv = sum(V(T(rewards)))
         logits = stack(logits)
         loss = -sum(Adv.expand_as(logits) * logits)
         N = len(rewards)
         loss = loss / N
+
+        opt.zero_grad()
+        loss.backward()
+        torch.nn.utils.clip_grad_norm(policy.parameters(), 40)
+        opt.step()
+        if i % 1000 == 0:
+            print(int(Adv.data.numpy()))
