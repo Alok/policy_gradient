@@ -33,67 +33,11 @@ ACTION_SHAPE = env.action_space.shape[0]
 STATE_RANGE = env.observation_space.high
 # Actions are Numpy arrays of length 1 with elements in the (negative and positive) range [,2]
 ACTION_RANGE = env.action_space.high
-
-################# TYPES #####################
-timestep = int
-
-Reward = float
-
-#############################################
-
-# TODO add gamma as default arg = .95
 DISCOUNT = .99
 
-pi = Variable(torch.FloatTensor([math.pi]))
-
-# TODO policy should return a probability (prob vector over discrete actions or just a prob)
+pi = V(T([math.pi]))
 
 
-def discount(rewards):
-    # return Tensor([pow(DISCOUNT, i) for i in range(len(rewards))])
-    return np.array([pow(DISCOUNT, i) for i in range(len(rewards))])
-
-
-def G(rewards, start: timestep = 0, end: timestep = None) -> Reward:
-    '''Total discounted future rewards.'''
-    return sum(np.array(rewards[start:end]) * discount(rewards[start:end]))
-
-
-def collect_trajectory(policy, *, render=args.render):
-    '''Run through an episode by following a policy and collect data.'''
-
-    # to avoid python's list append behavior
-    states = []
-    actions = []
-    rewards = []
-
-    done = False
-
-    s = Tensor(env.reset())
-    states.append(s) # if s is a scalar, this will just return random numbers
-
-    while not done:
-        if render:
-            env.render()
-        # TODO add action picking
-        s = Variable(s)
-        a = behavior_policy.select_action(s)[0].data.numpy()
-        s, r, done, _ = env.step(a)
-        s = Tensor(s)
-        states.append(s)
-        actions.append(a)
-        rewards.append(r)
-
-    # Final state is considered to have reward 0 for transitioning forever.
-    rewards.append(0)
-
-    return states, actions, rewards
-
-
-def gaussian(x, mean, var):
-    a = (-(x - mean).pow(2) / (2 * var)).exp()
-    b = 1 / ((2 * var * pi.expand_as(var)).sqrt())
-    return a * b
 
 
 class Policy(nn.Module):
