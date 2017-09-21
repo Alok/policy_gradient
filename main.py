@@ -8,11 +8,10 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import torch.nn.utils
-from pudb import set_trace
 from torch import Tensor as T
 from torch import nn, stack
 from torch.autograd import Variable as V
-from torch.nn.functional import relu, sigmoid, softplus
+from torch.nn.functional import relu, softplus
 from torch.optim import Adam
 
 parser = argparse.ArgumentParser()
@@ -26,6 +25,7 @@ args = parser.parse_args()
 
 DISCOUNT = args.discount
 ITERS = args.iterations
+
 env = gym.make(args.env)
 
 STATE_SHAPE = env.observation_space.shape[0] if len(
