@@ -37,9 +37,15 @@ ACTION_SHAPE = env.action_space.shape[0] if len(
 ) == 1 else env.action_space.shape
 
 
-def W(s: np.ndarray = np.random.rand(3)) -> V:
-    '''Wrap array into Variable '''
-    return V(torch.from_numpy(s))
+def W(x=np.random.rand(STATE_SHAPE)) -> V:
+    '''Wrap array into Variable. '''
+    if isinstance(x, list):
+        var = V(T(x))
+    elif isinstance(x, np.ndarray):
+        var = V(torch.from_numpy(x))
+    elif isinstance(x, (float, int)):
+        var = V(T([x]))
+    return var
 
 
 class Policy(nn.Module):
