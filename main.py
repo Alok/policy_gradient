@@ -80,39 +80,39 @@ class Policy(nn.Module):
 
 
 def sample(mean: V, variance: V) -> T:
-    '''Sample an action'''
-
+    '''Sample an action. Since we pass it to gym, no need for Variable output.'''
     std = variance.sqrt()
-    # Sample from standard normal distribution to scale into arbitrary Gaussian.
-    gaussian_noise = V(torch.randn(mean.size()))
+    action = torch.normal(mean, std).data
 
-    # `action` SHOULD be a Tensor, not a Variable.
-    action = (mean + std * gaussian_noise).data
-
-    return torch.clamp(
-        action,
-        min=float(env.action_space.low),
-        max=float(env.action_space.high),
-    )
-
-
-def pdf(a: T, mean: V, variance: V) -> V:
-    '''Get probability density of an action'''
-    exp_term = (-(V(a) - mean).pow(2) / (2 * variance)).exp()
-    coeff = 1 / ((2 * variance * pi.expand_as(variance)).sqrt())
-    return coeff * exp_term
+    return action
 
 
 def log_pdf(a: T, mean: V, variance: V) -> V:
     '''Get log probability density of an action to try and avoid overflow.'''
-    # Don't apply exponent since we take a log anyway.
+    # To avoid some of the downsides of writing this myself, manually unroll the log of a product to avoid over/underflow
     exp_term = (-(V(a) - mean).pow(2) / (2 * variance))
-    # XXX. Experiment: To avoid some of the downsides of writing this myself, manually unroll the log to avoid over/underflow
-    # coeff = 1 / ((2 * variance * pi.expand_as(variance)).sqrt())
-    log_coeff = -((2 * variance * pi.expand_as(variance)).sqrt()).log()
-    # return (coeff.log() + exp_term).view(1)
     log_coeff = -((2 * np.pi * variance).sqrt()).log()
     return (log_coeff + exp_term).view(1)
+
+
+def G(rewards, start=0, end=None):
+    return sum(rewards[start:end])
+
+
+def bprop(opt, rewards, log_probs) -> V:
+    '''Statefully perform optimization.'''
+    discounted_rewards = [pow(DISCOUNT, i) * r for i, r in enumerate(rewards)]
+    acc_returns = [G(discounted_rewards, t) for t in range(len(discounted_rewards))]
+    GAE = W(acc_returns)
+
+    log_probs = stack(log_probs)
+
+    loss = -(GAE @ log_probs) / len(rewards)
+
+    opt.zero_grad()
+    loss.backward()
+    opt.step()
+    return loss
 
 
 if __name__ == '__main__':
