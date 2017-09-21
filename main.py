@@ -19,11 +19,13 @@ from torch.optim import Adam
 parser = argparse.ArgumentParser()
 parser.add_argument('-e', '--env', type=str, default='Pendulum-v0')
 parser.add_argument('-n', '--iterations', type=int, default=2_000)
+parser.add_argument('-d', '--discount', type=float, default=.99)
 parser.add_argument('--new', action='store_true')
 parser.add_argument('--render', '-r', action='store_true')
 
 args = parser.parse_args()
 
+DISCOUNT = args.discount
 ITERS = args.iterations
 env = gym.make(args.env)
 
