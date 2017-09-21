@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import argparse
-import math
 
 import gym
 import numpy as np
@@ -33,7 +32,6 @@ STATE_SHAPE = env.observation_space.shape[0] if len(
     env.observation_space.shape
 ) == 1 else env.observation_space.shape
 
-pi = V(T([math.pi]))
 ACTION_SHAPE = env.action_space.shape[0] if len(
     env.action_space.shape
 ) == 1 else env.action_space.shape
@@ -104,6 +102,7 @@ def log_pdf(a: T, mean: V, variance: V) -> V:
     # coeff = 1 / ((2 * variance * pi.expand_as(variance)).sqrt())
     log_coeff = -((2 * variance * pi.expand_as(variance)).sqrt()).log()
     # return (coeff.log() + exp_term).view(1)
+    log_coeff = -((2 * np.pi * variance).sqrt()).log()
     return (log_coeff + exp_term).view(1)
 
 
