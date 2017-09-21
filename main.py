@@ -56,6 +56,7 @@ class Policy(nn.Module):
         A = ACTION_SHAPE
         self.l1 = nn.Linear(S, H)
         self.l2 = nn.Linear(H, H)
+        self.l3 = nn.Linear(H, H)
 
         self.mean_head = nn.Linear(H, A)
         self.variance_head = nn.Linear(H, A)
@@ -67,10 +68,12 @@ class Policy(nn.Module):
         s = relu(s)
         s = self.l2(s)
         s = relu(s)
+        s = self.l3(s)
+        s = relu(s)
 
         mean = self.mean_head(s)
 
-        # Variance must be > 0, so apply a softplus
+        # Apply a softplus to ensure variance nonnegative.
         variance = softplus(self.variance_head(s))
 
         return mean, variance
