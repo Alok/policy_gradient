@@ -89,6 +89,12 @@ def pdf(a: T, mean: V, variance: V) -> V:
     return coeff * exp_term
 
 
+def log_pdf(a: T, mean: V, variance: V) -> V:
+    '''Get log probability density of an action to try and avoid overflow.'''
+    # Don't apply exponent since we take a log anyway.
+    exp_term = (-(V(a) - mean).pow(2) / (2 * variance))
+    # coeff = 1 / ((2 * variance * pi.expand_as(variance)).sqrt())
+    # return (coeff.log() + exp_term).view(1)
 if __name__ == '__main__':
 
     behavior_policy = Policy()
