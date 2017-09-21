@@ -54,14 +54,16 @@ class Policy(nn.Module):
 
         self.l3, self.l3_ = nn.Linear(H, A), nn.Linear(H, 1)
 
-    def forward(self, s):
+    def forward(self, s: V):
         s = s.view(1, 3).float()
-        s = self.l1(s)
-        s = self.l2(s)
+        s = relu(self.l1(s))
+        s = relu(self.l2(s))
 
-        mean, var = self.l3(s), self.l3_(s)
+        mean = self.l3(s)
+        # Variance must be > 0, so apply a softplus
+        variance = softplus(self.l3_(s))
+        return mean, variance
 
-        return mean, var
 
     def select_action(self, s):
 
