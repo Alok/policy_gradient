@@ -8,13 +8,17 @@ import gym
 import numpy as np
 import torch
 import torch.nn.functional as F
-from torch import Tensor, nn
-from torch.autograd import Variable
-from torch.nn.functional import relu
+import torch.nn.utils
+from pudb import set_trace
+from torch import Tensor as T
+from torch import nn, stack
+from torch.autograd import Variable as V
+from torch.nn.functional import relu, softplus
+from torch.optim import Adam
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-e', '--env', type=str, default='Pendulum-v0')
-parser.add_argument('-n', '--iterations', type=int, default=2)
+parser.add_argument('-n', '--iterations', type=int, default=10000)
 parser.add_argument('--new', action='store_true')
 parser.add_argument('--render', '-r', action='store_true')
 
