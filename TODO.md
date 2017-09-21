@@ -1,0 +1,4 @@
+-   [] save model
+-   [] add critic
+-   [] add plotting for iter: Returns
+-   [] make actions always occur in valid range with truncated normal or something
