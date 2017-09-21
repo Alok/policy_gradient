@@ -56,6 +56,7 @@ class Policy(nn.Module):
 
     def forward(self, s: V):
         s = s.view(1, 3).float()
+        s = s.view(1, STATE_SHAPE).float()
         s = self.l1(s)
         s = relu(s)
         s = self.l2(s)
