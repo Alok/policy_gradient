@@ -100,9 +100,9 @@ def G(rewards, start=0, end=None):
 
 def bprop(opt, rewards, log_probs) -> Variable:
     '''Statefully perform optimization.'''
-    discounted_rewards = [pow(DISCOUNT, i) * r for i, r in enumerate(rewards)]
-    acc_returns = [G(discounted_rewards, t) for t in range(len(discounted_rewards))]
-    GAE = W(acc_returns)
+    discounted_rewards = [pow(DISCOUNT, t) * r for t, r in enumerate(rewards)]
+    cumulative_returns = [G(discounted_rewards, t) for t in range(len(discounted_rewards))]
+    GAE = W(cumulative_returns)
 
     log_probs = stack(log_probs)
 
