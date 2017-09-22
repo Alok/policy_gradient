@@ -63,7 +63,6 @@ class Policy(nn.Module):
 
     def forward(self, s: Variable) -> (Variable, Variable):
         '''Output mean and variance of a Gaussian.'''
-        s = s.view(1, STATE_SHAPE).float()
         s = self.l1(s)
         s = relu(s)
         s = self.l2(s)
@@ -92,7 +91,7 @@ def log_pdf(a: Tensor, mean: Variable, variance: Variable) -> Variable:
     # To avoid some of the downsides of writing this myself, manually unroll the log of a product to avoid over/underflow
     exp_term = (-(Variable(a) - mean).pow(2) / (2 * variance))
     log_coeff = -((2 * np.pi * variance).sqrt()).log()
-    return (log_coeff + exp_term).view(1)
+    return (log_coeff + exp_term)
 
 
 def G(rewards, start=0, end=None):
@@ -132,12 +131,13 @@ if __name__ == '__main__':
         s = env.reset()
 
         while not done:
-            mean, variance = policy(W(s))
+            # Cast `s` to `float32` from `float64` since PyTorch expects single precision.
+            mean, variance = policy(W(s.astype(np.float32)))
 
             a = sample(mean, variance)
             log_prob = log_pdf(a, mean, variance)
 
-            s, r, done, _ = env.step(a.numpy()[0])
+            s, r, done, _ = env.step(a.numpy())
 
             log_probs.append(log_prob)
             rewards.append(r)
