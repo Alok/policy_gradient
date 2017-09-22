@@ -8,3 +8,4 @@
 -   [] BatchNorm and other tweaks for network
 -   [] anneal exploration rate
 -   [] add PPO
+-   [] make `a` a `Variable` and see if it breaks anything
