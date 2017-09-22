@@ -8,9 +8,9 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import torch.nn.utils
-from torch import Tensor as T
+from torch import Tensor
 from torch import nn, stack
-from torch.autograd import Variable as V
+from torch.autograd import Variable
 from torch.nn.functional import relu, softplus
 from torch.optim import Adam
 
@@ -37,15 +37,15 @@ ACTION_SHAPE = env.action_space.shape[0] if len(
 ) == 1 else env.action_space.shape
 
 
-def W(x=np.random.rand(STATE_SHAPE)) -> V:
+def W(x=np.random.rand(STATE_SHAPE)) -> Variable:
     '''Wrap array into Variable. '''
     if isinstance(x, list):
-        var = V(T(x))
+        variable = Variable(Tensor(x))
     elif isinstance(x, np.ndarray):
-        var = V(torch.from_numpy(x))
+        variable = Variable(torch.from_numpy(x))
     elif isinstance(x, (float, int)):
-        var = V(T([x]))
-    return var
+        variable = Variable(Tensor([x]))
+    return variable
 
 
 class Policy(nn.Module):
@@ -61,7 +61,7 @@ class Policy(nn.Module):
         self.mean_head = nn.Linear(H, A)
         self.variance_head = nn.Linear(H, A)
 
-    def forward(self, s: V) -> (V, V):
+    def forward(self, s: Variable) -> (Variable, Variable):
         '''Output mean and variance of a Gaussian.'''
         s = s.view(1, STATE_SHAPE).float()
         s = self.l1(s)
@@ -79,7 +79,7 @@ class Policy(nn.Module):
         return mean, variance
 
 
-def sample(mean: V, variance: V) -> T:
+def sample(mean: Variable, variance: Variable) -> Tensor:
     '''Sample an action. Since we pass it to gym, no need for Variable output.'''
     std = variance.sqrt()
     action = torch.normal(mean, std).data
@@ -87,10 +87,10 @@ def sample(mean: V, variance: V) -> T:
     return action
 
 
-def log_pdf(a: T, mean: V, variance: V) -> V:
+def log_pdf(a: Tensor, mean: Variable, variance: Variable) -> Variable:
     '''Get log probability density of an action to try and avoid overflow.'''
     # To avoid some of the downsides of writing this myself, manually unroll the log of a product to avoid over/underflow
-    exp_term = (-(V(a) - mean).pow(2) / (2 * variance))
+    exp_term = (-(Variable(a) - mean).pow(2) / (2 * variance))
     log_coeff = -((2 * np.pi * variance).sqrt()).log()
     return (log_coeff + exp_term).view(1)
 
@@ -99,7 +99,7 @@ def G(rewards, start=0, end=None):
     return sum(rewards[start:end])
 
 
-def bprop(opt, rewards, log_probs) -> V:
+def bprop(opt, rewards, log_probs) -> Variable:
     '''Statefully perform optimization.'''
     discounted_rewards = [pow(DISCOUNT, i) * r for i, r in enumerate(rewards)]
     acc_returns = [G(discounted_rewards, t) for t in range(len(discounted_rewards))]
