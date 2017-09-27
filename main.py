@@ -149,7 +149,7 @@ if __name__ == '__main__':
 
         loss = bprop(opt, rewards, log_probs)
 
-        if i % (ITERS // 10) == 0:
+        if i % 5 == 0:
             print(
                 f'Episode: {i}',
                 f'Returns: {int(sum(rewards))}',
