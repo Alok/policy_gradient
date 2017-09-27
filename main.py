@@ -52,7 +52,7 @@ class Policy(nn.Module):
     def __init__(self):
         super().__init__()
         S = STATE_SHAPE
-        H = 128  # Hidden size
+        H = max(env.observation_space.shape)  # Hidden size
         A = ACTION_SHAPE
         self.l1 = nn.Linear(S, H)
         self.l2 = nn.Linear(H, H)
