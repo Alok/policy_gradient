@@ -44,6 +44,10 @@ def W(x=np.random.rand(STATE_SHAPE)) -> Variable:
         variable = Variable(torch.from_numpy(x))
     elif isinstance(x, (float, int)):
         variable = Variable(Tensor([x]))
+    elif isinstance(x, Tensor):
+        variable = Variable(x)
+    else:
+        print(type(x))
     return variable
 
 
