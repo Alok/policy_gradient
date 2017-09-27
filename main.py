@@ -8,8 +8,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import torch.nn.utils
-from torch import Tensor
-from torch import nn, stack
+from torch import Tensor, nn, stack
 from torch.autograd import Variable
 from torch.nn.functional import relu, softplus
 from torch.optim import Adam
@@ -120,8 +119,6 @@ if __name__ == '__main__':
     opt = Adam(policy.parameters())
 
     for i in range(ITERS):
-        if args.render:
-            env.render()
 
         rewards = []
         log_probs = []
@@ -129,6 +126,10 @@ if __name__ == '__main__':
         done = False
 
         s = env.reset()
+
+        if args.render:
+            # Must be after `env.reset()`.
+            env.render()
 
         while not done:
             # Cast `s` to `float32` from `float64` since PyTorch expects single precision.
