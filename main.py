@@ -39,13 +39,13 @@ ACTION_SHAPE = env.action_space.shape[0] if len(
 def W(x=np.random.rand(STATE_SHAPE)) -> Variable:
     '''Wrap array into Variable. '''
     if isinstance(x, list):
-        variable = Variable(Tensor(x))
+        variable = Variable(Tensor(x)).cuda()
     elif isinstance(x, np.ndarray):
-        variable = Variable(torch.from_numpy(x))
+        variable = Variable(torch.from_numpy(x)).cuda()
     elif isinstance(x, (float, int)):
-        variable = Variable(Tensor([x]))
+        variable = Variable(Tensor([x])).cuda()
     elif isinstance(x, Tensor):
-        variable = Variable(x)
+        variable = Variable(x).cuda()
     else:
         print(type(x))
     return variable
@@ -105,9 +105,9 @@ def bprop(opt, rewards, log_probs) -> Variable:
     '''Statefully perform optimization.'''
     discounted_rewards = [pow(DISCOUNT, t) * r for t, r in enumerate(rewards)]
     cumulative_returns = [G(discounted_rewards, t) for t in range(len(discounted_rewards))]
-    GAE = W(cumulative_returns)
+    GAE = W(cumulative_returns).cuda()
 
-    log_probs = stack(log_probs)
+    log_probs = stack(log_probs).cuda()
 
     loss = -(GAE @ log_probs) / len(rewards)
 
@@ -119,7 +119,7 @@ def bprop(opt, rewards, log_probs) -> Variable:
 
 if __name__ == '__main__':
 
-    policy = Policy()
+    policy = Policy().cuda()
     opt = Adam(policy.parameters())
 
     for i in range(ITERS):
@@ -142,7 +142,7 @@ if __name__ == '__main__':
             a = sample(mean, variance)
             log_prob = log_pdf(a, mean, variance)
 
-            s, r, done, _ = env.step(a.numpy())
+            s, r, done, _ = env.step(a.cpu().numpy())
 
             log_probs.append(log_prob)
             rewards.append(r)
@@ -153,6 +153,6 @@ if __name__ == '__main__':
             print(
                 f'Episode: {i}',
                 f'Returns: {int(sum(rewards))}',
-                f'Loss: {float(loss.data.numpy())}',
+                f'Loss: {float(loss.cpu().data.numpy())}',
                 sep=' || ',
             )
