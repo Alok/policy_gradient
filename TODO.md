@@ -1,4 +1,7 @@
--   [] add CUDA support and move onto GPU
+-   [x] add CUDA support and move onto GPU
+-   [] figure out how pinned memory works and if it helps
+-   [] add minibatch support and use replay buffer (`dequeue`
+    should work)
 -   [] save model
 -   [] add critic
 -   [] add entropy to encourage exploration
