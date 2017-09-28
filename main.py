@@ -81,18 +81,18 @@ class Policy(nn.Module):
         return mean, variance
 
 
-def sample(mean: Variable, variance: Variable) -> Tensor:
+def sample(mean: Variable, variance: Variable) -> Variable:
     '''Sample an action. Since we pass it to gym, no need for Variable output.'''
     std = variance.sqrt()
-    action = torch.normal(mean, std).data
+    action = torch.normal(mean, std)
 
     return action
 
 
-def log_pdf(a: Tensor, mean: Variable, variance: Variable) -> Variable:
+def log_pdf(a: Variable, mean: Variable, variance: Variable) -> Variable:
     '''Get log probability density of an action to try and avoid overflow.'''
     # To avoid some of the downsides of writing this myself, manually unroll the log of a product to avoid over/underflow
-    exp_term = (-(Variable(a) - mean).pow(2) / (2 * variance))
+    exp_term = (-(a - mean).pow(2) / (2 * variance))
     log_coeff = -((2 * np.pi * variance).sqrt()).log()
     return (log_coeff + exp_term)
 
@@ -142,7 +142,8 @@ if __name__ == '__main__':
             a = sample(mean, variance)
             log_prob = log_pdf(a, mean, variance)
 
-            s, r, done, _ = env.step(a.cpu().numpy())
+            s, r, done, _ = env.step(a.data.cpu().numpy())
+            a.reinforce(r)
 
             log_probs.append(log_prob)
             rewards.append(r)
